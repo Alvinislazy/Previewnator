@@ -27,6 +27,8 @@ Previewnator is a high-performance Windows shell extension and command-line tool
 
 ## Usage
 
+Right click on a single folder or a group of folders. Click Merge selected or process individually. That's it! , You'll find the output video in the parent folder with "Reel" or "Preview" prefix.
+
 ### Context Menu
 - **Merge Selected**: Combines multiple selected sequence folders into a single preview reel.
 - **Process Individually**: Generates a separate preview file for every selected folder in parallel.
