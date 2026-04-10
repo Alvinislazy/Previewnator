@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+bin/
+*.zip
+ffmpeg_debug.txt
+test_*.png
+test_*.py
+.DS_Store
