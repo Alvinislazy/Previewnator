@@ -2,6 +2,8 @@
 
 Previewnator is a high-performance Windows shell extension and command-line tool designed for VFX artists and studios to automate the generation of annotated preview reels from image sequences.
 
+![Previewnator Demo](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjR2bnQwbGVuMmppc2NxaG82bXJ0bjhzN3E1bTBldWFlMHJ3cWgwbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/6zbtMwsjnlZkhVMANs/giphy.gif)
+
 ## Features
 
 - **Deep Windows Integration**: Full cascading context menu support for folders and multiple file selections.
