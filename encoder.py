@@ -41,21 +41,28 @@ def _ensure_ffmpeg(ffmpeg_exe: str) -> str:
     print("[Previewnator] FFmpeg not found. Attempting to download static build ...")
     os.makedirs(py_bin_dir, exist_ok=True)
     
-    # URL for a reliable static build (Gyan.dev)
-    url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    # Primary URL: GitHub-hosted (BtbN) - usually very fast CDN
+    url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    # Fallback URL (Gyan.dev)
+    fallback_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    
     zip_path = os.path.join(py_bin_dir, "ffmpeg.zip")
     
-    def _progress(count, block_size, total_size):
-        if total_size > 0:
-            percent = min(100, count * block_size * 100 / total_size)
-            print(f"\r  Downloading: {percent:.1f}%", end="")
-        else:
-            print(f"\r  Downloading: {count * block_size / 1024 / 1024:.1f} MB", end="")
+    def _do_download(target_url):
+        try:
+            print(f"  Source: {target_url}")
+            urllib.request.urlretrieve(target_url, zip_path, reporthook=_progress)
+            print()
+            return True
+        except Exception as e:
+            print(f"\n  [!] Primary download failed or interrupted: {e}")
+            return False
 
     try:
-        print(f"  Source: {url}")
-        urllib.request.urlretrieve(url, zip_path, reporthook=_progress)
-        print() # Newline after progress
+        if not _do_download(url):
+            print("  Switching to fallback mirror...")
+            if not _do_download(fallback_url):
+                raise RuntimeError("All mirrors failed.")
         
         print("  Extracting ...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
