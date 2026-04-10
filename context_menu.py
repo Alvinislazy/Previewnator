@@ -319,9 +319,6 @@ def uninstall():
         _delete_key_recursive(winreg.HKEY_CURRENT_USER, base_path)
         print(f"  Removed: {base_path}")
 
-    # Remove legacy keys
-    for old_path in [LEGACY_REG_KEY_DIR, LEGACY_REG_KEY_BACK]:
-        _delete_key_recursive(winreg.HKEY_CURRENT_USER, old_path)
 
     print("[Previewnator] Context menu removed.")
     
