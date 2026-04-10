@@ -4,15 +4,6 @@ Previewnator is a high-performance Windows shell extension and command-line tool
 
 ![Previewnator Demo](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjR2bnQwbGVuMmppc2NxaG82bXJ0bjhzN3E1bTBldWFlMHJ3cWgwbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/6zbtMwsjnlZkhVMANs/giphy.gif)
 
-## Features
-
-- **Deep Windows Integration**: Full cascading context menu support for folders and multiple file selections.
-- **Accurate Color Pipeline**: High-precision 16-bit RGB processing for EXR sequences, replicating the standard scene-linear to sRGB view transform found in professional viewers like mrViewer.
-- **Hardware Acceleration**: Automatic detection and utilization of Intel QuickSync (QSV), NVIDIA NVENC, and AMD AMF hardware encoders for blisteringly fast exports.
-- **Autonomous Dependency Management**: Zero-config setup. The tool automatically detects, downloads, and manages a local FFmpeg binary if it's not found on the system path.
-- **Multi-threaded Batching**: Process dozens of shots simultaneously or sequentially with prioritized resource allocation.
-- **Configurable Overlays**: Built-in burnt-in metadata including frame numbers, filenames, and timecodes.
-
 ## Requirements
 
 - **Windows 10/11**
@@ -29,6 +20,16 @@ Previewnator is a high-performance Windows shell extension and command-line tool
 ## Usage
 
 Right click on a single folder or a group of folders. Click Merge selected or process individually. That's it! , You'll find the output video in the parent folder with "Reel" or "Preview" prefix.
+
+## Features
+
+- **Deep Windows Integration**: Full cascading context menu support for folders and multiple file selections.
+- **Accurate Color Pipeline**: High-precision 16-bit RGB processing for EXR sequences, replicating the standard scene-linear to sRGB view transform found in professional viewers like mrViewer.
+- **Hardware Acceleration**: Automatic detection and utilization of Intel QuickSync (QSV), NVIDIA NVENC, and AMD AMF hardware encoders for blisteringly fast exports.
+- **Autonomous Dependency Management**: Zero-config setup. The tool automatically detects, downloads, and manages a local FFmpeg binary if it's not found on the system path.
+- **Multi-threaded Batching**: Process dozens of shots simultaneously or sequentially with prioritized resource allocation.
+- **Configurable Overlays**: Built-in burnt-in metadata including frame numbers, filenames, and timecodes.
+
 
 ### Context Menu
 - **Merge Selected**: Combines multiple selected sequence folders into a single preview reel.
