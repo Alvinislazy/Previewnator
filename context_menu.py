@@ -322,28 +322,32 @@ def uninstall():
 
     print("[Previewnator] Context menu removed.")
     
-    # If we are running from the AppData folder, perform a self-destruct
+    # If we are running from the AppData folder, perform a silent self-destruct
     if SCRIPT_DIR.lower() == INSTALL_DIR.lower():
-        print(f"[Previewnator] Cleaning up installation folder: {INSTALL_DIR}")
+        print(f"[Previewnator] Cleaning up installation folder (silently): {INSTALL_DIR}")
         
         # Windows locks files while they are running. We create a temporary 
-        # batch script that waits for us to exit and then nukes the folder.
-        temp_batch = os.path.join(tempfile.gettempdir(), "previewnator_cleanup.bat")
-        with open(temp_batch, "w", encoding="utf-8") as f:
-            f.write(f'@echo off\n'
-                    f'timeout /t 3 /nobreak > nul\n'
-                    f':retry\n'
-                    f'rd /s /q "{INSTALL_DIR}" > nul 2>&1\n'
-                    f'if exist "{INSTALL_DIR}" (\n'
-                    f'    timeout /t 1 /nobreak > nul\n'
-                    f'    goto retry\n'
-                    f')\n'
-                    f'del "%~f0"\n')
+        # VBScript that waits for us to exit and then nukes the folder.
+        # VBScripts run via wscript.exe are completely invisible.
+        vbs_cleanup = os.path.join(tempfile.gettempdir(), "previewnator_cleanup.vbs")
+        with open(vbs_cleanup, "w", encoding="utf-8") as f:
+            f.write(f'Set objFSO = CreateObject("Scripting.FileSystemObject")\n'
+                    f'WScript.Sleep 3000\n'  # Wait 3s for Python to exit
+                    f'On Error Resume Next\n'
+                    f'count = 0\n'
+                    f'Do While objFSO.FolderExists("{INSTALL_DIR}") And count < 60\n'
+                    f'    objFSO.DeleteFolder "{INSTALL_DIR}", True\n'
+                    f'    If objFSO.FolderExists("{INSTALL_DIR}") Then\n'
+                    f'        WScript.Sleep 1000\n'
+                    f'        count = count + 1\n'
+                    f'    End If\n'
+                    f'Loop\n'
+                    f'objFSO.DeleteFile WScript.ScriptFullName\n')
         
-        # Launch detached so it outlives this process
-        subprocess.Popen(["cmd.exe", "/c", temp_batch], 
-                         creationflags=subprocess.CREATE_NO_WINDOW | 0x00000008) # 0x8 is DETACHED_PROCESS
-        print("  Installation folder will be removed momentarily.")
+        # Launch using wscript.exe //nologo (totally invisible)
+        subprocess.Popen(["wscript.exe", "//nologo", vbs_cleanup], 
+                         creationflags=0x00000008) # 0x8 is DETACHED_PROCESS
+        print("  Installation folder will be removed in the background.")
 
 
 
