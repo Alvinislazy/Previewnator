@@ -307,20 +307,25 @@ def install(refresh_only=False):
 
 
 def uninstall():
-    # Clean up ExtendedSubCommands classes
-    for class_id in ["03_Accel", "04_FPS", "05_Quality", "06_Codec"]:
-        _delete_key_recursive(
-            winreg.HKEY_CURRENT_USER,
-            f"Software\\Classes\\Previewnator.{class_id}"
-        )
+    # 1. Clean up ALL possible class-based flyouts we've ever used
+    # This covers the CommandStore/ExtendedSubCommandsKey variants
+    prefixes = ["Previewnator.", "ReelForge."]
+    suffixes = ["03_Accel", "04_FPS", "05_Quality", "06_Codec", "Codecs", "FPS", "Quality", "Hardware"]
+    for p in prefixes:
+        for s in suffixes:
+            _delete_key_recursive(winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{p}{s}")
 
-    # Remove the shell cascade keys
-    for base_path in [REG_KEY_DIR, REG_KEY_BACK]:
-        _delete_key_recursive(winreg.HKEY_CURRENT_USER, base_path)
-        print(f"  Removed: {base_path}")
+    # 2. Clean up ALL possible main menu entries we've ever used
+    # This ensures "PreviewnatorUltimate" or "ReelForge" don't become ghosts
+    main_variants = ["Previewnator", "PreviewnatorUltimate", "ReelForge"]
+    for variant in main_variants:
+        for base in [r"Software\Classes\Directory\shell", r"Software\Classes\Directory\Background\shell"]:
+            path = f"{base}\\{variant}"
+            _delete_key_recursive(winreg.HKEY_CURRENT_USER, path)
+            # Also check for space-suffixed variants some versions might have created
+            _delete_key_recursive(winreg.HKEY_CURRENT_USER, path + " ")
 
-
-    print("[Previewnator] Context menu removed.")
+    print("[Previewnator] Registry deep clean complete. Context menu removed.")
     
     # If we are running from the AppData folder, perform a silent self-destruct
     if SCRIPT_DIR.lower() == INSTALL_DIR.lower():
