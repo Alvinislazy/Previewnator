@@ -17,6 +17,7 @@ Previewnator is a high-performance Windows shell extension and command-line tool
 
 - **Windows 10/11**
 - **Python 3.7+**
+- **FFMPEG (will auto-install)**
 
 ## Installation
 
