@@ -45,9 +45,17 @@ def _ensure_ffmpeg(ffmpeg_exe: str) -> str:
     url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
     zip_path = os.path.join(py_bin_dir, "ffmpeg.zip")
     
+    def _progress(count, block_size, total_size):
+        if total_size > 0:
+            percent = min(100, count * block_size * 100 / total_size)
+            print(f"\r  Downloading: {percent:.1f}%", end="")
+        else:
+            print(f"\r  Downloading: {count * block_size / 1024 / 1024:.1f} MB", end="")
+
     try:
-        print(f"  Downloading: {url}")
-        urllib.request.urlretrieve(url, zip_path)
+        print(f"  Source: {url}")
+        urllib.request.urlretrieve(url, zip_path, reporthook=_progress)
+        print() # Newline after progress
         
         print("  Extracting ...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
