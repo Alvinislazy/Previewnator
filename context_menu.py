@@ -325,11 +325,25 @@ def uninstall():
     # If we are running from the AppData folder, perform a self-destruct
     if SCRIPT_DIR.lower() == INSTALL_DIR.lower():
         print(f"[Previewnator] Cleaning up installation folder: {INSTALL_DIR}")
-        # Use a background process to wait for this exit then delete the folder
-        # 'timeout 2' gives this process time to finish and close file handles
-        cmd = f'cmd.exe /c "timeout /t 2 > nul && rd /s /q \\"{INSTALL_DIR}\\""'
-        subprocess.Popen(cmd, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-        print("  Installation folder will be removed in 2 seconds.")
+        
+        # Windows locks files while they are running. We create a temporary 
+        # batch script that waits for us to exit and then nukes the folder.
+        temp_batch = os.path.join(tempfile.gettempdir(), "previewnator_cleanup.bat")
+        with open(temp_batch, "w", encoding="utf-8") as f:
+            f.write(f'@echo off\n'
+                    f'timeout /t 3 /nobreak > nul\n'
+                    f':retry\n'
+                    f'rd /s /q "{INSTALL_DIR}" > nul 2>&1\n'
+                    f'if exist "{INSTALL_DIR}" (\n'
+                    f'    timeout /t 1 /nobreak > nul\n'
+                    f'    goto retry\n'
+                    f')\n'
+                    f'del "%~f0"\n')
+        
+        # Launch detached so it outlives this process
+        subprocess.Popen(["cmd.exe", "/c", temp_batch], 
+                         creationflags=subprocess.CREATE_NO_WINDOW | 0x00000008) # 0x8 is DETACHED_PROCESS
+        print("  Installation folder will be removed momentarily.")
 
 
 
