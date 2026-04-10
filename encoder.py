@@ -48,6 +48,13 @@ def _ensure_ffmpeg(ffmpeg_exe: str) -> str:
     
     zip_path = os.path.join(py_bin_dir, "ffmpeg.zip")
     
+    def _progress(count, block_size, total_size):
+        if total_size > 0:
+            percent = min(100, count * block_size * 100 / total_size)
+            print(f"\r  Downloading: {percent:.1f}%", end="")
+        else:
+            print(f"\r  Downloading: {count * block_size / 1024 / 1024:.1f} MB", end="")
+
     def _do_download(target_url):
         try:
             print(f"  Source: {target_url}")
@@ -55,7 +62,7 @@ def _ensure_ffmpeg(ffmpeg_exe: str) -> str:
             print()
             return True
         except Exception as e:
-            print(f"\n  [!] Primary download failed or interrupted: {e}")
+            print(f"\n  [!] Download failed or interrupted: {e}")
             return False
 
     try:
