@@ -14,6 +14,8 @@ import subprocess
 import time
 import hashlib
 import tempfile
+import platform
+import ctypes
 import urllib.request
 import zipfile
 import shutil
@@ -24,12 +26,25 @@ import config
 # Registry path for the folder context menu (per-user, no admin required)
 REG_KEY_DIR   = r"Software\Classes\Directory\shell\Previewnator"
 REG_KEY_BACK  = r"Software\Classes\Directory\Background\shell\Previewnator"
+REG_KEY_FOLDER = r"Software\Classes\Folder\shell\Previewnator"
+
+# Registry access flag to ensure we hit the 64-bit hive (even from 32-bit Python)
+REG_ACCESS = winreg.KEY_ALL_ACCESS | winreg.KEY_WOW64_64KEY
 
 # CommandStore: the reliable way to create 3-level-deep flyouts in Explorer
 COMMANDSTORE_ROOT = r"Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell"
 COMMAND_PREFIX    = "Previewnator."  # namespace all our commands
 
 MENU_LABEL    = "Previewnator "
+
+def _is_windows_11():
+    """Detect if we are running on Windows 11 (build 22000+)."""
+    try:
+        if platform.system() != "Windows": return False
+        build = int(platform.version().split('.')[-1])
+        return build >= 22000
+    except:
+        return False
 
 
 # Absolute path to this script's directory
@@ -142,6 +157,14 @@ def handle_batch(mode: str, path: str):
             subprocess.Popen(cmd, creationflags=0x00000010)
 
 
+def _refresh_explorer():
+    """Notify Windows Shell that associations/icons have changed to force a refresh."""
+    try:
+        # SHCNE_ASSOCCHANGED = 0x08000000, SHCNF_IDLIST = 0
+        ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+    except Exception:
+        pass
+
 def _set_key_value(key, name, value):
     winreg.SetValueEx(key, name, 0, winreg.REG_SZ, value)
 
@@ -153,14 +176,15 @@ def _set_key_value_dw(key, name, value):
 def _delete_key_recursive(hkey, root):
     """Recursively delete a registry key."""
     try:
-        with winreg.OpenKey(hkey, root, 0, winreg.KEY_ALL_ACCESS) as k:
+        # Use REG_ACCESS to ensure we look in the 64-bit hive
+        with winreg.OpenKey(hkey, root, 0, REG_ACCESS) as k:
             while True:
                 try:
                     name = winreg.EnumKey(k, 0)
                     _delete_key_recursive(hkey, root + "\\" + name)
                 except OSError:
                     break
-        winreg.DeleteKey(hkey, root)
+        winreg.DeleteKeyEx(hkey, root, winreg.KEY_WOW64_64KEY, 0)
     except FileNotFoundError:
         pass
 
@@ -178,7 +202,7 @@ def install(refresh_only=False):
         # Increase the Windows multiple-selection limit (default is 15)
         try:
             explorer_key = r"Software\Microsoft\Windows\CurrentVersion\Explorer"
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, explorer_key, 0, winreg.KEY_SET_VALUE) as key:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, explorer_key, 0, REG_ACCESS) as key:
                 winreg.SetValueEx(key, "MultipleInvokePromptMinimum", 0, winreg.REG_DWORD, 100)
         except Exception:
             pass
@@ -186,6 +210,7 @@ def install(refresh_only=False):
         # Explicitly clean target keys before installing
         _delete_key_recursive(winreg.HKEY_CURRENT_USER, REG_KEY_DIR)
         _delete_key_recursive(winreg.HKEY_CURRENT_USER, REG_KEY_BACK)
+        _delete_key_recursive(winreg.HKEY_CURRENT_USER, REG_KEY_FOLDER)
             
         # Small delay to let Windows Registry "settle"
         import time
@@ -234,9 +259,9 @@ def install(refresh_only=False):
     def _add_leaf(parent_key: str, slot: str, label: str, cmd: str):
         """Add a clickable leaf item under a parent shell key."""
         item_key = parent_key + f"\\shell\\{slot}"
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, item_key) as k:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, item_key, 0, REG_ACCESS) as k:
             _set_key_value(k, "MUIVerb", label)
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, item_key + r"\command") as k:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, item_key + r"\command", 0, REG_ACCESS) as k:
             _set_key_value(k, "", cmd)
 
     def _add_submenu(parent_key: str, slot: str, label: str):
@@ -248,17 +273,24 @@ def install(refresh_only=False):
         class_path = f"Software\\Classes\\{class_name}"
         
         # 1. Create the reference key in the main menu
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, sub_key) as k:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, sub_key, 0, REG_ACCESS) as k:
             _set_key_value(k, "MUIVerb", label)
             _set_key_value(k, "ExtendedSubCommandsKey", class_name)
             
         # 2. Return the path to the NEW class's shell key so children are added there
         return class_path
 
-    for base_path in [REG_KEY_DIR, REG_KEY_BACK]:
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base_path) as k_root:
+    install_paths = [REG_KEY_DIR, REG_KEY_BACK]
+    if _is_windows_11():
+        install_paths.append(REG_KEY_FOLDER)
+
+    for base_path in install_paths:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, base_path, 0, REG_ACCESS) as k_root:
             _set_key_value(k_root, "MUIVerb", MENU_LABEL)
-            _set_key_value(k_root, "SubCommands", "")
+            # On Windows 11, SubCommands can block the menu from appearing. 
+            # On Windows 10, it is traditionally used for certain types of cascades.
+            if not _is_windows_11():
+                _set_key_value(k_root, "SubCommands", "")
 
         # ── Actions (Level 2) ────────────────────────────────────────────
         _add_leaf(base_path, "01_Merge", "Merge Selected", cmd_merge)
@@ -302,7 +334,8 @@ def install(refresh_only=False):
             label = f"* {c_name}" if c == curr_codec else f"  {c_name}"
             cmd   = f'{silent_base} --set-config codec {c}'
             _add_leaf(c_key, f"{idx:02d}_{c}", label, cmd)
-
+            
+    _refresh_explorer()
     print(f"[Previewnator] Context menu installed (Codec: {curr_codec}, Quality: {curr_quality}, FPS: {curr_fps}, Accel: {curr_accel})")
 
 
@@ -319,8 +352,9 @@ def uninstall():
     # This ensures "PreviewnatorUltimate" or "ReelForge" don't become ghosts
     main_variants = ["Previewnator", "PreviewnatorUltimate", "ReelForge"]
     for variant in main_variants:
-        for base in [r"Software\Classes\Directory\shell", r"Software\Classes\Directory\Background\shell"]:
+        for base in [r"Software\Classes\Directory\shell", r"Software\Classes\Directory\Background\shell", r"Software\Classes\Folder\shell"]:
             path = f"{base}\\{variant}"
+
             _delete_key_recursive(winreg.HKEY_CURRENT_USER, path)
             # Also check for space-suffixed variants some versions might have created
             _delete_key_recursive(winreg.HKEY_CURRENT_USER, path + " ")
